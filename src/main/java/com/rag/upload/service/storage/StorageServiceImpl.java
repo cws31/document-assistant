@@ -1,6 +1,7 @@
 package com.rag.upload.service.storage;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.rag.upload.config.UploadProperties;
+import com.rag.upload.entity.Document;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,6 +48,18 @@ public class StorageServiceImpl implements StorageService {
                 storagePath);
 
         Files.deleteIfExists(path);
+
+    }
+
+    @Override
+    public InputStream read(Document document)
+            throws IOException {
+
+        Path path = Paths.get(
+                uploadProperties.getStorageLocation(),
+                document.getStoredFileName());
+
+        return Files.newInputStream(path);
 
     }
 }
