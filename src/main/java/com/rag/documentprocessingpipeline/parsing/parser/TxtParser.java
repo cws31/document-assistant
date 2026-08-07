@@ -8,6 +8,9 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.rag.documentprocessingpipeline.parsing.analysis.context.AnalysisContext;
+import com.rag.documentprocessingpipeline.parsing.analysis.model.AnalysisResult;
+import com.rag.documentprocessingpipeline.parsing.analysis.pipeline.AnalysisPipeline;
 import com.rag.documentprocessingpipeline.parsing.exception.ParsingException;
 import com.rag.documentprocessingpipeline.parsing.factory.ParsedDocumentFactory;
 import com.rag.documentprocessingpipeline.parsing.model.FileType;
@@ -24,87 +27,51 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class TxtParser extends AbstractDocumentParser {
 
-    private final ParsedDocumentFactory parsedDocumentFactory;
+        private final ParsedDocumentFactory parsedDocumentFactory;
 
-    @Override
-    public FileType supportedType() {
-        return FileType.TXT;
-    }
+        private final AnalysisPipeline analysisPipeline;
 
-    @Override
-    public ParsedDocument parse(
-            Document document,
-            InputStream inputStream) {
-
-        log.info(
-                "Starting TXT parsing. documentId={}",
-                document.getId());
-
-        try {
-
-            String extractedText = extractText(inputStream);
-
-            ParsedMetadata metadata = extractMetadata(document);
-
-            ParsedDocument parsedDocument = parsedDocumentFactory.create(
-                    document,
-                    extractedText,
-                    metadata);
-
-            log.info(
-                    "Successfully parsed TXT document. documentId={}",
-                    document.getId());
-
-            return parsedDocument;
-
-        } catch (IOException ex) {
-
-            log.error(
-                    "Failed to parse TXT document. documentId={}",
-                    document.getId(),
-                    ex);
-
-            throw new ParsingException(
-                    "Unable to parse TXT document.",
-                    ex);
-
+        @Override
+        public FileType supportedType() {
+                return FileType.TXT;
         }
 
-    }
+        @Override
+        public ParsedDocument parse(
+                        Document document,
+                        InputStream inputStream) {
 
-    private String extractText(
-            InputStream inputStream)
-            throws IOException {
+                log.info(
+                                "Starting TXT parsing. documentId={}",
+                                document.getId());
 
-        String extractedText = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8);
+                try {
 
-        extractedText = normalize(extractedText);
+                        String text = new String(
+                                        inputStream.readAllBytes(),
+                                        StandardCharsets.UTF_8);
 
-        validateExtractedText(extractedText);
+                        AnalysisContext context = AnalysisContext.builder()
+                                        .document(document)
+                                        .fileType(FileType.TXT)
+                                        .sourceDocument(text)
+                                        .build();
 
-        return extractedText;
+                        AnalysisResult result = analysisPipeline.analyze(context);
 
-    }
+                        return parsedDocumentFactory.create(
+                                        document,
+                                        result.getContent(),
+                                        result.getMetadata());
 
-    private ParsedMetadata extractMetadata(
-            Document document) {
+                } catch (IOException ex) {
 
-        Map<String, Object> attributes = new HashMap<>();
+                        throw new ParsingException(
+                                        "Unable to parse TXT document.",
+                                        ex);
 
-        attributes.put(
-                MetadataKeys.TITLE,
-                document.getOriginalFileName());
+                }
 
-        attributes.put(
-                "encoding",
-                StandardCharsets.UTF_8.name());
-
-        return ParsedMetadata.builder()
-                .attributes(attributes)
-                .build();
-
-    }
+        }
 
 }

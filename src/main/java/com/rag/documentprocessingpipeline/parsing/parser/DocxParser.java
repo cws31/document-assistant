@@ -2,19 +2,17 @@ package com.rag.documentprocessingpipeline.parsing.parser;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 
-import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.springframework.stereotype.Component;
 
+import com.rag.documentprocessingpipeline.parsing.analysis.context.AnalysisContext;
+import com.rag.documentprocessingpipeline.parsing.analysis.model.AnalysisResult;
+import com.rag.documentprocessingpipeline.parsing.analysis.pipeline.AnalysisPipeline;
 import com.rag.documentprocessingpipeline.parsing.exception.ParsingException;
 import com.rag.documentprocessingpipeline.parsing.factory.ParsedDocumentFactory;
 import com.rag.documentprocessingpipeline.parsing.model.FileType;
-import com.rag.documentprocessingpipeline.parsing.model.MetadataKeys;
 import com.rag.documentprocessingpipeline.parsing.model.ParsedDocument;
-import com.rag.documentprocessingpipeline.parsing.model.ParsedMetadata;
 import com.rag.upload.entity.Document;
 
 import lombok.RequiredArgsConstructor;
@@ -25,109 +23,58 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class DocxParser extends AbstractDocumentParser {
 
-    private final ParsedDocumentFactory parsedDocumentFactory;
+        private final ParsedDocumentFactory parsedDocumentFactory;
 
-    @Override
-    public FileType supportedType() {
-        return FileType.DOCX;
-    }
+        private final AnalysisPipeline analysisPipeline;
 
-    @Override
-    public ParsedDocument parse(
-            Document document,
-            InputStream inputStream) {
-
-        log.info(
-                "Starting DOCX parsing. documentId={}",
-                document.getId());
-
-        try {
-
-            try (XWPFDocument wordDocument = new XWPFDocument(inputStream)) {
-
-                String extractedText = extractText(wordDocument);
-
-                ParsedMetadata metadata = extractMetadata(wordDocument);
-
-                ParsedDocument parsedDocument = parsedDocumentFactory.create(
-                        document,
-                        extractedText,
-                        metadata);
-
-                log.info(
-                        "Successfully parsed DOCX document. documentId={}",
-                        document.getId());
-
-                return parsedDocument;
-
-            }
-
-        } catch (IOException ex) {
-
-            log.error(
-                    "Failed to parse DOCX document. documentId={}",
-                    document.getId(),
-                    ex);
-
-            throw new ParsingException(
-                    "Unable to parse DOCX document.",
-                    ex);
-
+        @Override
+        public FileType supportedType() {
+                return FileType.DOCX;
         }
 
-    }
+        @Override
+        public ParsedDocument parse(
+                        Document document,
+                        InputStream inputStream) {
 
-    private String extractText(
-            XWPFDocument document) {
+                log.info(
+                                "Starting DOCX parsing. documentId={}",
+                                document.getId());
 
-        StringBuilder builder = new StringBuilder();
+                try (XWPFDocument wordDocument = new XWPFDocument(inputStream)) {
 
-        document.getParagraphs()
-                .forEach(paragraph -> {
+                        AnalysisContext context = AnalysisContext.builder()
+                                        .document(document)
+                                        .fileType(FileType.DOCX)
+                                        .sourceDocument(wordDocument)
+                                        .build();
 
-                    String text = paragraph.getText();
+                        AnalysisResult result = analysisPipeline.analyze(context);
 
-                    if (text != null && !text.isBlank()) {
+                        ParsedDocument parsedDocument = parsedDocumentFactory.create(
+                                        document,
+                                        result.getContent(),
+                                        result.getMetadata());
 
-                        builder.append(text)
-                                .append(System.lineSeparator());
+                        log.info(
+                                        "Successfully parsed DOCX document. documentId={}",
+                                        document.getId());
 
-                    }
+                        return parsedDocument;
 
-                });
+                } catch (IOException ex) {
 
-        String extractedText = normalize(builder.toString());
+                        log.error(
+                                        "Failed to parse DOCX document. documentId={}",
+                                        document.getId(),
+                                        ex);
 
-        validateExtractedText(extractedText);
+                        throw new ParsingException(
+                                        "Unable to parse DOCX document.",
+                                        ex);
 
-        return extractedText;
+                }
 
-    }
-
-    private ParsedMetadata extractMetadata(
-            XWPFDocument document) {
-
-        POIXMLProperties.CoreProperties properties = document.getProperties()
-                .getCoreProperties();
-
-        Map<String, Object> attributes = new HashMap<>();
-
-        attributes.put(
-                MetadataKeys.TITLE,
-                properties.getTitle());
-
-        attributes.put(
-                MetadataKeys.AUTHOR,
-                properties.getCreator());
-
-        attributes.put(
-                "paragraphCount",
-                document.getParagraphs().size());
-
-        return ParsedMetadata.builder()
-                .attributes(attributes)
-                .build();
-
-    }
+        }
 
 }
