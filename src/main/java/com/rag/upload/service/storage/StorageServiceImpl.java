@@ -41,13 +41,14 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
-    public void delete(String storagePath) throws IOException {
+    public void delete(String storagePath)
+            throws IOException {
 
-        Path path = Paths.get(
-                uploadProperties.getStorageLocation(),
-                storagePath);
+        if (storagePath == null || storagePath.isBlank()) {
+            return;
+        }
 
-        Files.deleteIfExists(path);
+        Files.deleteIfExists(Path.of(storagePath));
 
     }
 
@@ -55,11 +56,8 @@ public class StorageServiceImpl implements StorageService {
     public InputStream read(Document document)
             throws IOException {
 
-        Path path = Paths.get(
-                uploadProperties.getStorageLocation(),
-                document.getStoredFileName());
-
-        return Files.newInputStream(path);
+        return Files.newInputStream(
+                Path.of(document.getStoragePath()));
 
     }
 }
