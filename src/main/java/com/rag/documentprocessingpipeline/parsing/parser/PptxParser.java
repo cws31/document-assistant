@@ -11,6 +11,9 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.springframework.stereotype.Component;
 
+import com.rag.documentprocessingpipeline.parsing.analysis.context.AnalysisContext;
+import com.rag.documentprocessingpipeline.parsing.analysis.model.AnalysisResult;
+import com.rag.documentprocessingpipeline.parsing.analysis.pipeline.AnalysisPipeline;
 import com.rag.documentprocessingpipeline.parsing.exception.ParsingException;
 import com.rag.documentprocessingpipeline.parsing.factory.ParsedDocumentFactory;
 import com.rag.documentprocessingpipeline.parsing.model.FileType;
@@ -27,111 +30,53 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PptxParser extends AbstractDocumentParser {
 
-    private final ParsedDocumentFactory parsedDocumentFactory;
+        private final ParsedDocumentFactory parsedDocumentFactory;
 
-    @Override
-    public FileType supportedType() {
-        return FileType.PPTX;
-    }
+        private final AnalysisPipeline analysisPipeline;
 
-    @Override
-    public ParsedDocument parse(
-            Document document,
-            InputStream inputStream) {
-
-        log.info(
-                "Starting PPTX parsing. documentId={}",
-                document.getId());
-
-        try (XMLSlideShow slideShow = new XMLSlideShow(inputStream)) {
-
-            String extractedText = extractText(slideShow);
-
-            ParsedMetadata metadata = extractMetadata(slideShow);
-
-            ParsedDocument parsedDocument = parsedDocumentFactory.create(
-                    document,
-                    extractedText,
-                    metadata);
-
-            log.info(
-                    "Successfully parsed PPTX document. documentId={}",
-                    document.getId());
-
-            return parsedDocument;
-
-        } catch (IOException ex) {
-
-            log.error(
-                    "Failed to parse PPTX document. documentId={}",
-                    document.getId(),
-                    ex);
-
-            throw new ParsingException(
-                    "Unable to parse PPTX document.",
-                    ex);
-
+        @Override
+        public FileType supportedType() {
+                return FileType.PPTX;
         }
 
-    }
+        @Override
+        public ParsedDocument parse(
+                        Document document,
+                        InputStream inputStream) {
 
-    private String extractText(
-            XMLSlideShow slideShow) {
+                log.info(
+                                "Starting PPTX parsing. documentId={}",
+                                document.getId());
 
-        StringBuilder builder = new StringBuilder();
+                try (XMLSlideShow slideShow = new XMLSlideShow(inputStream)) {
 
-        int slideNumber = 1;
+                        AnalysisContext context = AnalysisContext.builder()
+                                        .document(document)
+                                        .fileType(FileType.PPTX)
+                                        .sourceDocument(slideShow)
+                                        .build();
 
-        for (XSLFSlide slide : slideShow.getSlides()) {
+                        AnalysisResult result = analysisPipeline.analyze(context);
 
-            builder.append("Slide ")
-                    .append(slideNumber++)
-                    .append(System.lineSeparator());
+                        ParsedDocument parsedDocument = parsedDocumentFactory.create(
+                                        document,
+                                        result.getContent(),
+                                        result.getMetadata());
 
-            for (XSLFShape shape : slide.getShapes()) {
+                        log.info(
+                                        "Successfully parsed PPTX document. documentId={}",
+                                        document.getId());
 
-                if (shape instanceof XSLFTextShape textShape) {
+                        return parsedDocument;
 
-                    String text = textShape.getText();
+                } catch (IOException ex) {
 
-                    if (text != null &&
-                            !text.isBlank()) {
-
-                        builder.append(text)
-                                .append(System.lineSeparator());
-
-                    }
+                        throw new ParsingException(
+                                        "Unable to parse PPTX document.",
+                                        ex);
 
                 }
 
-            }
-
-            builder.append(System.lineSeparator());
-
         }
-
-        String extractedText = normalize(builder.toString());
-
-        validateExtractedText(
-                extractedText);
-
-        return extractedText;
-
-    }
-
-    private ParsedMetadata extractMetadata(
-            XMLSlideShow slideShow) {
-
-        Map<String, Object> attributes = new HashMap<>();
-
-        attributes.put(
-                "slideCount",
-                slideShow.getSlides().size());
-
-        return ParsedMetadata.builder()
-                .attributes(attributes)
-                .build();
-
-    }
 
 }
