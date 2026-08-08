@@ -9,7 +9,7 @@ import com.rag.documentprocessingpipeline.parsing.analysis.normalization.Composi
 import lombok.RequiredArgsConstructor;
 
 @Component
-@Order(400)
+@Order(600)
 @RequiredArgsConstructor
 public class TextNormalizationAnalyzer
         extends AbstractDocumentAnalyzer {

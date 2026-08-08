@@ -36,6 +36,10 @@ public class DefaultAnalysisPipeline implements AnalysisPipeline {
         return AnalysisResult.builder()
                 .content(context.getContent())
                 .metadata(context.getMetadata())
+                .images(context.getImages())
+                .tables(context.getTables())
+                .charts(context.getCharts())
+                .attributes(context.getAttributes())
                 .build();
 
     }

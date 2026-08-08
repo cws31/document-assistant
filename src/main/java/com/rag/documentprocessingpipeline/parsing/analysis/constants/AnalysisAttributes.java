@@ -13,8 +13,11 @@ public final class AnalysisAttributes {
 
     public static final String TABLE_FOUND = "tableFound";
 
+    public static final String TABLE_COUNT = "tableCount";
+
     public static final String CHART_FOUND = "chartFound";
 
-    public static final String DIAGRAM_FOUND = "diagramFound";
+    public static final String CHART_COUNT = "chartCount";
 
+    public static final String DIAGRAM_FOUND = "diagramFound";
 }
