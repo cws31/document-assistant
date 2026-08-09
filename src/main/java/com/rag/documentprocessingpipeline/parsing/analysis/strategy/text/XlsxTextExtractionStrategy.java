@@ -1,6 +1,10 @@
 package com.rag.documentprocessingpipeline.parsing.analysis.strategy.text;
 
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.stereotype.Component;
 
 import com.rag.documentprocessingpipeline.parsing.analysis.context.AnalysisContext;
@@ -9,38 +13,63 @@ import com.rag.documentprocessingpipeline.parsing.analysis.context.AnalysisConte
 public class XlsxTextExtractionStrategy
         implements TextExtractionStrategy {
 
+    private final DataFormatter formatter = new DataFormatter();
+
     @Override
     public boolean supports(
             AnalysisContext context) {
 
-        return context.getSourceDocument() instanceof XWPFDocument;
-
+        return context != null
+                && context.getSourceDocument() instanceof Workbook;
     }
 
     @Override
     public String extract(
             AnalysisContext context) {
 
-        XWPFDocument document = (XWPFDocument) context.getSourceDocument();
+        Workbook workbook = (Workbook) context.getSourceDocument();
 
         StringBuilder builder = new StringBuilder();
 
-        document.getParagraphs()
-                .forEach(paragraph -> {
+        for (Sheet sheet : workbook) {
 
-                    String text = paragraph.getText();
+            builder.append("Sheet: ")
+                    .append(sheet.getSheetName())
+                    .append(System.lineSeparator());
 
-                    if (text != null && !text.isBlank()) {
+            for (Row row : sheet) {
 
-                        builder.append(text)
-                                .append(System.lineSeparator());
+                boolean hasContent = false;
 
+                for (Cell cell : row) {
+
+                    String value = formatter.formatCellValue(cell);
+
+                    if (value != null
+                            && !value.isBlank()) {
+
+                        if (hasContent) {
+                            builder.append(" ");
+                        }
+
+                        builder.append(value.trim());
+
+                        hasContent = true;
                     }
+                }
 
-                });
+                if (hasContent) {
+                    builder.append(
+                            System.lineSeparator());
+                }
+            }
 
-        return builder.toString();
+            builder.append(
+                    System.lineSeparator());
+        }
 
+        return builder
+                .toString()
+                .trim();
     }
-
 }
