@@ -27,19 +27,21 @@ public class TextAnalyzer
                 .filter(s -> s.supports(context))
                 .findFirst()
                 .orElseThrow(() -> new ParsingException(
-                        "No text extraction strategy found."));
-
-        context.setContent(
-                strategy.extract(context));
+                        "No text extraction strategy found for file type: "
+                                + context.getFileType()));
 
         String extractedText = strategy.extract(context);
+
+        if (extractedText == null) {
+            extractedText = "";
+        }
+
+        extractedText = extractedText.trim();
 
         context.setContent(extractedText);
 
         context.getAttributes().put(
                 AnalysisAttributes.TEXT_FOUND,
                 !extractedText.isBlank());
-
     }
-
 }
